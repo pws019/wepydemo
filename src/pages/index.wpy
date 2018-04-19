@@ -1,0 +1,155 @@
+<style lang="less">
+  .centerBlock(){
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .header {
+    padding: 10rpx 0 10rpx 20rpx;
+    border-bottom: 1px solid black;
+  }
+
+  .add-btn{
+    width: 170rpx;
+    height: 80rpx;
+    border: 1rpx solid black;
+    .centerBlock();
+    margin-bottom: 20rpx;
+
+  }
+  .list {
+    width: 100%;
+    .list-item {
+      border-bottom: 1rpx solid black;
+      padding-left: 30rpx;
+      padding-right: 30rpx;
+      display: flex;
+      flex: 1;
+      justify-content: space-between;
+      overflow: hidden;
+      view {
+        display: flex;
+      }
+    }
+  }
+  .count {
+    padding-left: 30rpx;
+  }
+</style>
+<template>
+  <view class="container">
+    <view class="header" style="border-bottom: 1rpx solid black;">
+      <view class="add-btn" @tap="add">添加</view>
+    </view>
+    <!-- <book-modal></book-modal> -->
+    <bookModal @create.user="createOk" @update.user="updateOk"></bookModal>
+    <view class="list">
+      <view class="list-item">
+        <view class="content">id|name|price|author</view>
+        <view class="oper">操作</view>
+      </view>
+      <block wx:for="{{list}}" wx:for-index="idx" wx:for-item="item" wx:key="id">
+        <view class="list-item">
+          <view class="content">
+             {{idx}}|{{item.id}}|{{item.name}}|{{item.price}}|{{item.author}}
+          </view>
+          <view class="oper">
+            <view class="update" @tap="editItem({{item}})">修改</view>|
+            <view class="delete" @tap="deleteItem({{item.id}})">删除</view>
+          </view>
+        </view>
+      </block>
+      <view class="count">
+        当前有{{bookCount}}本书
+      </view>
+    </view>
+  </view>
+</template>
+
+<script>
+  import wepy from 'wepy'
+  import BookModal from '../components/bookModal'
+  import {getList,deleteItem} from '../service/book';
+
+  export default class Index extends wepy.page {
+    config = {
+      navigationBarTitleText: '书籍列表'  // 顶部标题配置
+    }
+    components = {
+      bookModal: BookModal  // 书籍组件
+    }
+
+    data = {
+      list: []   // 页面上需要展示的列表数据list
+    }
+
+    methods = {
+      add() {
+        //  根据id调用组件，第一个为组件id，第二个为组件方法，第三个为向组件传递参数
+        this.$invoke('bookModal', 'open',{});
+      },
+      editItem(item) {
+        console.log(item);
+        // 更新的时候传递的参数带id
+        this.$invoke('bookModal', 'open', item);
+
+        // 或者这里可以传递id作为参数
+        // const tapItem = this.list.filter(item => item.id == id)[0]
+      },
+      async deleteItem(id) {
+        // 展示Loading
+        wx.showLoading();
+        //  调用删除接口
+        const res = await deleteItem(id);
+        // 根据结果做流程处理
+        if(res.data.error) {
+          wx.showToast({title: '删除失败'});
+          return;
+        }
+        // 更新页面数据
+        this.list = this.list.filter(item => item.id != id);
+        wx.hideLoading();
+        this.$apply();
+      },
+      createOk(item) {
+        this.list.push(item);
+        this.$apply();
+      },
+      updateOk(itemObj) {
+        const id = itemObj.id;
+        let idx = -1;
+        this.list.some((item,index) => {
+          if(item.id == id) {
+            idx = index;
+          }
+        });
+        if(idx!=-1) {
+          this.list[idx] = itemObj;
+          this.$apply();
+        }
+        // 更省事的做法，重新获取一遍列表数据
+      }
+    }
+
+    computed = {
+      bookCount() {
+        return this.list.length;
+      }
+    }
+
+    async initData() {
+      wx.showLoading();
+      // 调用接口得到数据、赋值数据
+      const res = await getList();
+      this.list = res.data;
+      wx.hideLoading();
+      this.$apply();
+    }
+
+    onLoad() {
+      // 获取数据列表
+      this.initData();
+    }
+  }
+</script>

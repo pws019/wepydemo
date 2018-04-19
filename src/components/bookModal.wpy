@@ -1,0 +1,143 @@
+<style lang="less">
+  .centerBlock(){
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .fixed {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top:0;
+    bottom: 0;
+    background-color: rgba(0,0,0,.25);
+    .centerBlock();
+  }
+  .form-item {
+    display: flex;
+    .label {
+      width: 170rpx;
+    }
+    .input {
+      border: 1rpx solid black;
+    }
+    margin-bottom: 20rpx;
+  }
+  .form {
+    background-color: #fff;
+    border-radius: 20rpx;
+    padding: 20rpx;
+  }
+  .footer {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: 20rpx;
+
+    button {
+      font-size: 32rpx;
+      width: 170rpx;
+      height: 80rpx;
+      .centerBlock();
+    }
+  }
+</style>
+<template>
+  <view hidden="{{!show}}" class="fixed">
+    <form class="form" @submit="formSubmit" @reset="formReset">
+      <view class="form-item">
+        <view class="label">书名：</view>
+        <input type="text" class="input" name="Book[name]" value="{{book.name}}"/>
+      </view>
+      <view class="form-item">
+        <view class="label">价格：</view>
+        <input type="text" class="input" name="Book[price]" value="{{book.price}}"/>
+      </view>
+      <view class="form-item">
+        <view class="label">作者：</view>
+        <input type="text" class="input" name="Book[author]" value="{{book.author}}" />
+      </view>
+      <view class="footer">
+        <button formType="submit">确认</button>
+        <button formType="reset">取消</button>
+      </view>
+    </form>
+  </view>
+</template>
+<script>
+  import wepy from 'wepy'
+  import {createItem,updateItem} from '../service/book';
+
+  export default class BookModal extends wepy.component {
+
+    data = {
+      show: false,
+      cur: 'add',
+      book: {
+        name: '',
+        price: '',
+        author: '',
+      }
+    }
+
+    onLoad() {
+    }
+
+    open(data) {
+      this.show = true;
+      if(data.id) {
+        this.cur = 'update'
+        this.book = data;
+        // this.setData(this.$prefix+ 'book', data); //如果清空时候未设置book = {},则下次编辑同一item时会有问题。
+      } else {
+        this.cur = 'add'
+      }
+      this.$apply();
+    }
+
+    async create(formData) {
+      wx.showLoading();
+      const res = await createItem(formData);
+      if(!res.data.error) {
+        this.$emit('create', res.data.data);
+      }
+      this.show =false;
+      this.$apply();
+      wx.hideLoading();
+    }
+
+    async update(formData) {
+      wx.showLoading();
+      const res = await updateItem(this.book.id,formData);
+      const args = {
+        id: this.book.id,
+        name: formData['Book[name]'],
+        price: formData['Book[price]'],
+        author: formData['Book[author]']
+      }
+      if(!res.data.error) {
+        this.$emit('update', args);
+      }
+      this.show = false;
+      this.$apply();
+      wx.hideLoading();
+    }
+
+    methods = {
+      formSubmit(event) {
+        const formData = event.detail.value;
+        if(this.cur === 'update') {
+          this.update(formData);
+        } else  if(this.cur === 'add') {
+          this.create(formData);
+        }
+      },
+      formReset(event) {
+        // 这一步很重要
+        // this.book = {};
+        this.show = false;
+        this.$apply();
+        this.$emit("close");
+      }
+    }
+  }
+</script>
